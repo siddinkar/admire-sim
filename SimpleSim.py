@@ -59,7 +59,7 @@ class Controller:
 
 
 if __name__ == "__main__":
-    c = Controller(100, 20)
+    c = Controller(2000, 20)
     # nominal = np.array(odeint(c.dxdt, c.x0, c.t))
     # nominal = np.array([np.linalg.norm(i) for i in nominal])
     # disturbed = np.array(odeint(c.dxdt_disturbed, c.x0, c.t))
@@ -83,10 +83,10 @@ if __name__ == "__main__":
         MM_series.append(c.E_N / c.E_D)
         AM_series.append(c.E_D - c.E_N)
 
-    plt.plot(AM_series, label='E_D - E_N')
+    plt.plot(MM_series, label='E_N / E_D')
     plt.legend()
     plt.title("Energy Metric")
     plt.xlabel('Range')
     plt.ylabel('Metric')
-    plt.savefig('./figures/AM.png')
+    plt.savefig('./figures/MM.png')
     plt.show()
