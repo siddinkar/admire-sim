@@ -6,69 +6,250 @@ format compact
 A = [-0.9967 0 0.6176; 0 -0.5057 0; -0.0939  0 -0.2127];
 B = [0 -4.2423 4.2423 1.4871; 1.6532 -1.2735 -1.2735 0.0024; 0 -0.2805 0.2805 -0.8823];
 
-tf = 5;
+tf = 20;
 WB = integral(@(tau) expm(A*tau)*(B*B')*expm(A'*tau), 0, tf, 'ArrayValued', true);
 
 
 x0 = [3 / sqrt(3); 3 / sqrt(3); 3 / sqrt(3)];
-
+R = linspace(1, 1000, 50);
+tfspan = linspace(1, 60, 1000);
 
 tspan = linspace(0, tf, 1000);
 
-% nominal trajectory
-[t_nominal, x_nominal] = ode45(@(t, x) admire_ss_nominal(t, x, A, B, WB, tf, x0), tspan, x0);
+dt = tf / 1000;
 
-y_nominal = randn(length(x_nominal), 1);
-for i = 1:length(x_nominal)
-    y_nominal(i) = norm(x_nominal(i, :));
-end
+E_nominal_series = zeros(length(tfspan), 1); %zeros(length(R), 1);
+E_rand_series = zeros(length(tfspan), 1); %zeros(length(R), 1);
+E_sin_series = zeros(length(tfspan), 1); %zeros(length(R), 1);
+E_const_series = zeros(length(tfspan), 1); %zeros(length(R), 1);
 
-% random disturbance
 w_rand = randn(3, length(tspan)) * 5;
 R_rand = integral(@(tau) expm(A*(tf - tau)) * [interp1(tspan, w_rand(1,:), tau); interp1(tspan, w_rand(2,:), tau); interp1(tspan, w_rand(3,:), tau)], 0, tf, 'ArrayValued', true);
-[t_rand,x_rand] = ode45(@(t,x) admire_ss_randn(t, x, w_rand, A, B, WB, R_rand, tf, x0, tspan), tspan, x0);
 
-y_rand = randn(length(x_rand), 1);
-for i = 1:length(x_rand)
-    y_rand(i) = norm(x_rand(i, :));
-end
-
-% sinusoidal disturbance
 R_sin = integral(@(tau) expm(A * (tf - tau)) * [sin(tau) ; sin(tau); sin(tau)], 0, tf, 'ArrayValued', true);
-[t_sin, x_sin] = ode45(@(t, x) admire_ss_sin(t, x, A, B, WB, R_sin, tf, x0), tspan, x0);
 
-y_sin = randn(length(x_sin), 1);
-for i = 1:length(x_sin)
-    y_sin(i) = norm(x_sin(i, :));
-end
-
-% constant disturbance
 w_const = [1 / sqrt(3); 1 / sqrt(3); 1 / sqrt(3)];
-disp(w_const);
 R_const = integral(@(tau) expm(A *(tf - tau)) * w_const, 0, tf, 'ArrayValued', true);
-[t_const, x_const] = ode45(@(t,x) admire_ss_const(t, x, w_const, A, B, WB, R_const, tf, x0), tspan, x0);
 
-y_const = randn(length(x_const), 1);
-for i = 1:length(x_const)
-    y_const(i) = norm(x_const(i, :));
+% for r=1:length(R)
+%     x0 = x0 * R(r);
+% 
+%     % nominal trajectory
+%     [t_nominal, x_nominal] = ode45(@(t, x) admire_ss_nominal(t, x, A, B, WB, tf, x0), tspan, x0);
+% 
+%     E_n = 0;
+%     for i = 1:length(t_nominal)
+%             E_n = E_n + (control_energy(dt * i, A, B, WB, [0 ; 0 ; 0], tf, x0) * dt);
+%     end
+% 
+%     y_nominal = randn(length(x_nominal), 1);
+%     for i = 1:length(x_nominal)
+%         y_nominal(i) = norm(x_nominal(i, :));
+%     end
+% 
+%     % random disturbance
+%     [t_rand,x_rand] = ode45(@(t,x) admire_ss_randn(t, x, w_rand, A, B, WB, R_rand, tf, x0, tspan), tspan, x0);
+% 
+%     E_rand = 0;
+%     for i = 1:length(t_rand)
+%             E_rand = E_rand + (control_energy(dt * i, A, B, WB, R_rand, tf, x0) * dt);
+%     end
+% 
+%     y_rand = randn(length(x_rand), 1);
+%     for i = 1:length(x_rand)
+%         y_rand(i) = norm(x_rand(i, :));
+%     end
+% 
+%     % sinusoidal disturbance
+%     [t_sin, x_sin] = ode45(@(t, x) admire_ss_sin(t, x, A, B, WB, R_sin, tf, x0), tspan, x0);
+% 
+%     E_sin = 0;
+%     for i = 1:length(t_sin)
+%             E_sin = E_sin + (control_energy(dt * i, A, B, WB, R_sin, tf, x0) * dt);
+%     end
+% 
+%     y_sin = randn(length(x_sin), 1);
+%     for i = 1:length(x_sin)
+%         y_sin(i) = norm(x_sin(i, :));
+%     end
+% 
+%     % constant disturbance
+%     [t_const, x_const] = ode45(@(t,x) admire_ss_const(t, x, w_const, A, B, WB, R_const, tf, x0), tspan, x0);
+% 
+%     E_const = 0;
+%     for i = 1:length(t_const)
+%             E_const = E_const + (control_energy(dt * i, A, B, WB, R_const, tf, x0) * dt);
+%     end
+% 
+%     y_const = randn(length(x_const), 1);
+%     for i = 1:length(x_const)
+%         y_const(i) = norm(x_const(i, :));
+%     end
+% 
+%     E_nominal_series(r) = E_n;
+%     E_rand_series(r) = E_rand;
+%     E_sin_series(r) = E_sin;
+%     E_const_series(r) = E_const;
+% end
+
+r_m = zeros(length(tf), 1);
+r_a = zeros(length(tf), 1);
+
+for t=1:length(tfspan)
+    tf=tfspan(t);
+
+    WB = integral(@(tau) expm(A*tau)*(B*B')*expm(A'*tau), 0, tf, 'ArrayValued', true);
+
+    % nominal trajectory
+    [t_nominal, x_nominal] = ode45(@(t, x) admire_ss_nominal(t, x, A, B, WB, tf, x0), tspan, x0);
+    
+    E_n = 0;
+    for i = 1:length(t_nominal)
+            E_n = E_n + (control_energy(dt * i, A, B, WB, [0 ; 0 ; 0], tf, x0) * dt);
+    end
+    
+    y_nominal = randn(length(x_nominal), 1);
+    for i = 1:length(x_nominal)
+        y_nominal(i) = norm(x_nominal(i, :));
+    end
+    
+    % random disturbance
+    w_rand = randn(3, length(tspan)) * 5;
+    R_rand = integral(@(tau) expm(A*(tf - tau)) * [interp1(tspan, w_rand(1,:), tau); interp1(tspan, w_rand(2,:), tau); interp1(tspan, w_rand(3,:), tau)], 0, tf, 'ArrayValued', true);
+    [t_rand,x_rand] = ode45(@(t,x) admire_ss_randn(t, x, w_rand, A, B, WB, R_rand, tf, x0, tspan), tspan, x0);
+    
+    E_rand = 0;
+    for i = 1:length(t_rand)
+            E_rand = E_rand + (control_energy(dt * i, A, B, WB, R_rand, tf, x0) * dt);
+    end
+    
+    y_rand = randn(length(x_rand), 1);
+    for i = 1:length(x_rand)
+        y_rand(i) = norm(x_rand(i, :));
+    end
+    
+    % sinusoidal disturbance
+    % R_sin = integral(@(tau) expm(A * (tf - tau)) * [sin(tau) ; sin(tau); sin(tau)], 0, tf, 'ArrayValued', true);
+    % [t_sin, x_sin] = ode45(@(t, x) admire_ss_sin(t, x, A, B, WB, R_sin, tf, x0), tspan, x0);
+    % 
+    % E_sin = 0;
+    % for i = 1:length(t_sin)
+    %         E_sin = E_sin + (control_energy(dt * i, A, B, WB, R_sin, tf, x0) * dt);
+    % end
+    % 
+    % y_sin = randn(length(x_sin), 1);
+    % for i = 1:length(x_sin)
+    %     y_sin(i) = norm(x_sin(i, :));
+    % end
+    
+    % constant disturbance
+    w_const = [1 / sqrt(3); 1 / sqrt(3); 1 / sqrt(3)];
+    R_const = integral(@(tau) expm(A *(tf - tau)) * w_const, 0, tf, 'ArrayValued', true);
+    [t_const, x_const] = ode45(@(t,x) admire_ss_const(t, x, w_const, A, B, WB, R_const, tf, x0), tspan, x0);
+    
+    E_const = 0;
+    for i = 1:length(t_const)
+            E_const = E_const + (control_energy(dt * i, A, B, WB, R_const, tf, x0) * dt);
+    end
+    
+    y_const = randn(length(x_const), 1);
+    for i = 1:length(x_const)
+        y_const(i) = norm(x_const(i, :));
+    end
+
+    [V, D] = eig(inv(WB));
+    q_bar = norm(V, 1) * integral(@(tau) norm(expm(A * (tf - tau)), inf), 0, tf, 'ArrayValued', true);
+    sum = 0;
+    for lambda=1:3
+        sum = sum + q_bar^2 * D(lambda, lambda);
+    end
+    gamma = 2 * q_bar * norm(D * V' * expm(A * tf) * x0, 1);
+    E_bound = E_n + gamma + sum;
+
+    l_m = min(expm(A' * tf) * WB\expm(A * tf), [], "all");
+    r_m(t) = l_m * x0^2 / (l_m * R(i)^2 + gamma * R(i) * sqrt(3) + sum);
+
+    E_nominal_series(r) = E_n;
+    E_rand_series(r) = E_rand;
+    % E_sin_series(r) = E_sin;
+    E_const_series(r) = E_const;
 end
 
-[t_energy,E] = ode45(@(t,E) control_energy(t, A, B, WB, R_rand, tf, x0), tspan, 0);
 
+% r_m = zeros(length(R), 1);
+% r_a = zeros(length(R), 1);
+
+% l_m = min(expm(A' * tf) * WB\expm(A * tf), [], "all");
+% for i=1:length(r_m)
+%     r_m(i) = l_m * R(i)^2 / (l_m * R(i)^2 + gamma * R(i) * sqrt(3) + sum);
+% end
+
+mm_rand = zeros(length(r_m), 1);
+for i=1:length(mm_rand)
+    mm_rand(i) = E_nominal_series(i) / E_rand_series(i);
+end
+
+% mm_sin = zeros(length(r_m), 1);
+% for i=1:length(mm_sin)
+%     mm_sin(i) = E_nominal_series(i) / E_sin_series(i);
+% end
+
+
+mm_const = zeros(length(r_m), 1);
+for i=1:length(mm_const)
+    mm_const(i) = E_nominal_series(i) / E_const_series(i);
+end
+
+% for i=1:length(r_a)
+%     r_a(i) = sum + gamma * R(i) * sqrt(3);
+% end
+
+am_rand = zeros(length(r_a), 1);
+for i=1:length(am_rand)
+    am_rand(i) = E_rand_series(i) - E_nominal_series(i);
+end
+
+% am_sin = zeros(length(r_a), 1);
+% for i=1:length(am_sin)
+%     am_sin(i) = E_sin_series(i) - E_nominal_series(i);
+% end
+
+
+am_const = zeros(length(r_a), 1);
+for i=1:length(am_const)
+    am_const(i) = E_const_series(i) - E_const_series(i);
+end
 
 figure(1)
 set(gcf, 'DefaultLineLineWidth', 2)
 set(groot,'defaultAxesTickLabelInterpreter','latex')
 set(groot,'defaulttextinterpreter','latex')
 set(groot,'defaultLegendInterpreter','latex')
-plot(t_nominal, y_nominal, 'b')
+plot(R, r_m, 'b')
 hold on
-plot(t_rand, y_rand, 'r')
-plot(t_sin, y_sin, 'k')
-plot(t_const, y_const, 'g')
-xlabel('Time $t$ (s)')
-ylabel('$||x(t)||$')
-legend('$w = 0$', '$w \sim \mathcal{N}(0,1)$', '$w = sin(t)$', '$w = \bar{w} * sgn(x0)$')
+plot(R, mm_rand, 'r')
+plot(R, mm_const, 'g')
+xlabel('Range')
+ylabel('$E_N / E_D$')
+legend('$r_M$', '$w \sim \mathcal{N}(0,1)$', '$w = \bar(w) * sgn(x_0)$')
 grid on
 box on
 set(gca, 'FontSize', 18)
+set(gca, 'XScale', 'log')
+
+figure(2)
+set(gcf, 'DefaultLineLineWidth', 2)
+set(groot,'defaultAxesTickLabelInterpreter','latex')
+set(groot,'defaulttextinterpreter','latex')
+set(groot,'defaultLegendInterpreter','latex')
+plot(R, r_a, 'b')
+hold on
+plot(R, am_rand, 'r')
+plot(R, am_const, 'g')
+xlabel('Range')
+ylabel('$E_D - E_N$')
+legend('$r_A$', '$w \sim \mathcal{N}(0,1)$', '$w = \bar(w) * sgn(x_0)$')
+grid on
+box on
+set(gca, 'FontSize', 18)
+set(gca, 'XScale', 'log')
